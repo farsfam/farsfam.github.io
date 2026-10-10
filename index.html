@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>طرح کمک مردمی نان</title>
+<style>
+  :root{--green:#075c45;--cream:#fff8e8;--red:#e51d3f;--gold:#f3bd27}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Tahoma,Arial,sans-serif;background:#f4efe2;color:#17382e}
+  .wrap{max-width:760px;margin:24px auto;padding:16px}
+  .card{background:var(--cream);border:3px solid var(--green);border-radius:22px;box-shadow:0 10px 35px #0002;overflow:hidden}
+  .head{background:var(--green);color:white;padding:26px 22px;text-align:center}
+  .head h1{margin:0 0 8px;font-size:clamp(25px,6vw,42px)}
+  .head p{margin:0;font-size:16px}
+  form{padding:22px}
+  label{display:block;font-weight:700;margin:15px 0 7px}
+  input,select{width:100%;padding:14px;border:2px solid #d8cba9;border-radius:12px;background:white;font-size:16px}
+  .help{background:#e8f2e8;border-radius:14px;padding:14px;margin:18px 0;line-height:1.9}
+  button{width:100%;border:0;border-radius:14px;padding:15px;font-size:18px;font-weight:800;cursor:pointer}
+  button:disabled{opacity:.6;cursor:wait}
+  .send{background:var(--red);color:#fff;margin-top:10px}
+  .share{background:#fff;color:var(--green);border:2px solid var(--green);margin-top:10px;display:none}
+  .google{display:block;text-align:center;margin-top:14px;padding:13px;border-radius:12px;background:#fff;border:2px solid var(--green);color:var(--green);text-decoration:none;font-weight:700}
+  .status{margin-top:14px;padding:14px;border-radius:12px;line-height:1.9;display:none;font-weight:700}
+  .status.ok{display:block;background:#dff3e3;color:#0a5a2a}
+  .status.err{display:block;background:#fde3e3;color:#a11212}
+  .note{font-size:13px;color:#666;margin-top:14px;line-height:1.8}
+  .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <section class="card">
+    <header class="head">
+      <h1>طرح کمک مردمی نان</h1>
+      <p>هر ماه یک روز برای کمک به سفره‌های نیازمند</p>
+    </header>
+
+    <form id="helpForm">
+      <label for="amount">مبلغ کمک (تومان)</label>
+      <input id="amount" name="amount" inputmode="numeric" placeholder="مثلاً ۱۰۰۰۰۰">
+
+      <label for="name">نام و نام خانوادگی</label>
+      <input id="name" name="name" required placeholder="نام شما">
+
+      <label for="phone">شماره موبایل</label>
+      <input id="phone" name="phone" inputmode="tel" placeholder="شماره تماس">
+
+      <label for="day">روز انتخابی برای کمک ماهانه</label>
+      <select id="day" name="day" required></select>
+
+      <!-- فیلد مخفی ضد اسپم؛ نباید پر شود -->
+      <div class="hp" aria-hidden="true">
+        <input id="website" name="website" tabindex="-1" autocomplete="off">
+      </div>
+
+      <div class="help">
+        با انتخاب یک روز، تعهد شما برای کمک ماهانه ثبت می‌شود. اطلاعات شما فقط برای هماهنگی همین طرح استفاده می‌شود.
+      </div>
+
+      <button class="send" id="sendBtn" type="submit">ثبت تعهد</button>
+      <button class="share" id="shareBtn" type="button">ارسال یک نسخه از پیام (اختیاری)</button>
+
+      <div class="status" id="status"></div>
+
+      <a class="google" href="https://www.google.com/search?q=%D8%B3%D8%A7%D9%85%D8%A7%D9%86%D9%87+%D8%AE%DB%8C%D8%B1%DB%8C%D9%87+%D8%A2%D8%B4%DB%8C%D8%A7%D9%86%D9%87+%D9%85%D9%87%D8%B1" target="_blank" rel="noopener">
+        باز کردن «سامانه خیریه آشیانه مهر» با گوگل
+      </a>
+
+      <div class="note">
+        برای هماهنگی بیشتر با ۰۹۹۰۷۳۰۴۴۳۰ تماس بگیرید.
+      </div>
+    </form>
+  </section>
+</div>
+
+<script>
+// ⬇️ آدرس Web App که از Google Apps Script می‌گیری را اینجا بگذار
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwjKQ-zADIuMRj_aMRzIajNZABNbX-aLj9-sb5mRnwEUEg1m9xBbaMbdUegHmY2dS-E/exec';
+
+const daySel = document.getElementById('day');
+for (let i = 1; i <= 31; i++) {
+  const o = document.createElement('option');
+  o.value = i; o.textContent = 'روز ' + i; daySel.appendChild(o);
+}
+
+const form = document.getElementById('helpForm');
+const sendBtn = document.getElementById('sendBtn');
+const shareBtn = document.getElementById('shareBtn');
+const statusBox = document.getElementById('status');
+let lastMessage = '';
+
+function show(type, text) {
+  statusBox.className = 'status ' + type;
+  statusBox.textContent = text;
+}
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  if (SCRIPT_URL.indexOf('PASTE_') === 0) {
+    show('err', 'آدرس سرور هنوز در کد تنظیم نشده است.');
+    return;
+  }
+
+  const data = {
+    name: document.getElementById('name').value.trim(),
+    phone: document.getElementById('phone').value.trim() || 'تعیین نشده',
+    amount: document.getElementById('amount').value.trim() || 'تعیین نشده',
+    day: document.getElementById('day').value,
+    website: document.getElementById('website').value
+  };
+
+  lastMessage =
+`طرح کمک مردمی نان
+نام: ${data.name}
+مبلغ کمک: ${data.amount} تومان
+روز انتخابی کمک ماهانه: روز ${data.day} هر ماه
+شماره موبایل: ${data.phone}`;
+
+  sendBtn.disabled = true;
+  sendBtn.textContent = 'در حال ثبت...';
+  statusBox.className = 'status';
+
+  try {
+    // no-cors: پاسخ قابل خواندن نیست، اما درخواست ارسال می‌شود
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      body: new URLSearchParams(data)
+    });
+    show('ok', 'تعهد شما با موفقیت ثبت شد. سپاسگزاریم 🌿');
+    form.reset();
+    if (navigator.share) shareBtn.style.display = 'block';
+  } catch (err) {
+    show('err', 'ثبت انجام نشد. لطفاً اینترنت را بررسی کنید و دوباره تلاش کنید.');
+  } finally {
+    sendBtn.disabled = false;
+    sendBtn.textContent = 'ثبت تعهد';
+  }
+});
+
+shareBtn.addEventListener('click', async () => {
+  try { await navigator.share({ title: 'طرح کمک مردمی نان', text: lastMessage }); } catch (e) {}
+});
+</script>
+</body>
+</html>
